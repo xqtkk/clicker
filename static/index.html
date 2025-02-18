@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        #score { font-size: 2rem; margin: 20px; }
+        button { font-size: 1.5rem; padding: 10px 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Кликер</h1>
+    <p>Счет: <span id="score">0</span></p>
+    <button onclick="clickButton()">Клик!</button>
+
+    <script>
+        async function updateScore() {
+            const response = await fetch('/score');
+            const data = await response.json();
+            document.getElementById('score').innerText = data.score;
+        }
+
+        async function clickButton() {
+            await fetch('/click', { method: 'POST' });
+            updateScore();
+        }
+
+        updateScore(); // Загружаем текущий счет при открытии страницы
+    </script>
+    <p>Автокликер: <span id="autoClicker">Нет</span></p>
+    <button id="buyAutoClicker" onclick="buyAutoClicker()">Купить автокликер (50 очков)</button>
+
+    <script>
+        async function updateScore() {
+            const response = await fetch('/score');
+            const data = await response.json();
+            document.getElementById('score').innerText = data.score;
+            document.getElementById('progress').innerText = data.progress;
+            document.getElementById('autoClicker').innerText = data.autoClicker ? "Да" : "Нет";
+
+            document.getElementById('buyAutoClicker').disabled = data.autoClicker || data.score < 50;
+        }
+
+        async function clickButton() {
+            await fetch('/click', { method: 'POST' });
+            updateScore();
+        }
+
+        async function buyAutoClicker() {
+            await fetch('/buy-autoclicker', { method: 'POST' });
+            updateScore();
+        }
+
+        updateScore(); // Загружаем текущий счет при открытии страницы
+    </script>
+</body>
+</html>
