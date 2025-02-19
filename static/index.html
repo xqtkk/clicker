@@ -6,7 +6,7 @@
     <title>Кликер</title>
     <style>
         body { text-align: center; font-family: Arial, sans-serif; }
-        #score { font-size: 2rem; margin: 20px; }
+        #score, #autoClickers { font-size: 2rem; margin: 20px; }
         button { font-size: 1.5rem; padding: 10px 20px; cursor: pointer; }
     </style>
 </head>
@@ -14,49 +14,39 @@
     <h1>Кликер</h1>
     <p>Счет: <span id="score">0</span></p>
     <button onclick="clickButton()">Клик!</button>
-
-    <script>
-        async function updateScore() {
-            const response = await fetch('/score');
-            const data = await response.json();
-            document.getElementById('score').innerText = data.score;
-        }
-
-        async function clickButton() {
-            await fetch('/click', { method: 'POST' });
-            updateScore();
-        }
-
-        updateScore(); // Загружаем текущий счет при открытии страницы
-    </script>
-    <p>Автокликер: <span id="autoClicker">Нет</span></p>
+    <p>Автокликеров: <span id="autoClickers">0</span></p>
     <button id="buyAutoClicker" onclick="buyAutoClicker()">Купить автокликер (50 очков)</button>
-
+    
     <script>
         async function updateScore() {
             const response = await fetch('/score');
             const data = await response.json();
-            document.getElementById('score').innerText = data.score;
-            document.getElementById('progress').innerText = data.progress;
-            document.getElementById('autoClicker').innerText = data.autoClicker ? "Да" : "Нет";
+            updateUI(data);
+        }
 
-            document.getElementById('buyAutoClicker').disabled = data.autoClicker || data.score < 50;
+        function updateUI(data) {
+            document.getElementById('score').innerText = data.score;
+            document.getElementById('autoClickers').innerText = data.autoClickers;
+            document.getElementById('buyAutoClicker').innerText = `Купить автокликер (${data.price} очков)`;
+            document.getElementById('buyAutoClicker').disabled = data.score < data.price;
         }
 
         async function clickButton() {
             await fetch('/click', { method: 'POST' });
-            updateScore();
         }
 
         async function buyAutoClicker() {
             await fetch('/buy-autoclicker', { method: 'POST' });
-            updateScore();
         }
 
-        // Периодически обновляем данные о счете, чтобы страница обновлялась
-        setInterval(updateScore, 1000); // обновление каждую секунду
+        // Подключаем SSE
+        const eventSource = new EventSource('/events');
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            updateUI(data);
+        };
 
-        updateScore(); // Загружаем текущий счет при открытии страницы
-    </script>
+        updateScore(); // Первичное обновление UI
+    </script>       
 </body>
 </html>
