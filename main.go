@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -19,6 +21,13 @@ var (
 	mutex        sync.Mutex
 	sseClients   = make(map[chan string]bool)
 	sseMutex     sync.Mutex
+
+	achievements = map[string]bool{
+		"Первый клик!":     false,
+		"🏅 Новичок → Набрать 100 очков.":  false,
+		"🔥 Клик-мастер → Набрать 1000 очков.": false,
+		"👑 Легенда → Набрать 1 000 000 очков.": false,
+	}
 )
 
 func main() {
@@ -33,6 +42,7 @@ func main() {
 			"progress":     progress,
 			"autoClickers": atomic.LoadInt32(&autoClickers),
 			"price":        getAutoClickerPrice(),
+			"achievements": achievements,
 		})
 	})
 
@@ -40,10 +50,20 @@ func main() {
 	r.POST("/click", func(c *gin.Context) {
 		mutex.Lock()
 		defer mutex.Unlock()
-		score++
+
+		points := 1
+		critical := false
+		if rand.Float32() < 0.1 {
+			points *= 2
+			critical = true
+		}
+
+		score += points
 		progress = score / 10
-		broadcastScore()
-		c.JSON(http.StatusOK, gin.H{"score": score, "progress": progress})
+
+		checkAchievements()
+		broadcastScore(critical)
+		c.JSON(http.StatusOK, gin.H{"score": score, "progress": progress, "critical": critical})
 	})
 
 	// Покупка автокликера
@@ -58,7 +78,7 @@ func main() {
 			}
 		}
 		mutex.Unlock()
-		broadcastScore()
+		broadcastScore(false)
 		c.JSON(http.StatusOK, gin.H{
 			"score":        score,
 			"progress":     progress,
@@ -83,15 +103,15 @@ func main() {
 		})
 
 		sseMutex.Lock()
-		delete(sseClients, clientChan)
 		close(clientChan)
+		delete(sseClients, clientChan)
 		sseMutex.Unlock()
 	})
 
 	r.Static("/static", "./static")
 
-	fmt.Println("Server running on http://localhost:8080")
-	if err := r.Run(":8080"); err != nil {
+	fmt.Println("Server running on http://localhost:4000")
+	if err := r.Run(":4000"); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -108,18 +128,52 @@ func startAutoClicker() {
 		time.Sleep(1 * time.Second)
 		mutex.Lock()
 		score += int(atomic.LoadInt32(&autoClickers)) // Один клик за каждый автокликер
-		println(int(atomic.LoadInt32(&autoClickers)))
 		progress = score / 10
 		mutex.Unlock()
-		broadcastScore()
+		broadcastScore(false)
 	}
 }
 
 // Отправка обновлений клиентам
-func broadcastScore() {
+func broadcastScore(critical bool) {
 	sseMutex.Lock()
 	defer sseMutex.Unlock()
+
+	// Создаём структуру с данными
+	data := map[string]interface{}{
+		"score":        score,
+		"progress":     progress,
+		"autoClickers": atomic.LoadInt32(&autoClickers),
+		"price":        getAutoClickerPrice(),
+		"achievements": achievements,
+		"critical":     critical,
+	}
+
+	// Преобразуем в JSON
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Ошибка кодирования JSON:", err)
+		return
+	}
+
+	// fmt.Println("Отправка JSON:", string(jsonData)) // Проверяем что уходит клиентам
+
 	for clientChan := range sseClients {
-		clientChan <- fmt.Sprintf(`{"score": %d, "progress": %d, "autoClickers": %d, "price": %d}`, score, progress, atomic.LoadInt32(&autoClickers), getAutoClickerPrice())
+		clientChan <- string(jsonData)
+	}
+}
+
+func checkAchievements() {
+	if score >= 1 && !achievements["Первый клик!"] {
+		achievements["Первый клик!"] = true
+	}
+	if score >= 100 && !achievements["🏅 Новичок → Набрать 100 очков."] {
+		achievements["🏅 Новичок → Набрать 100 очков."] = true
+	}
+	if score >= 1000 && !achievements["🔥 Клик-мастер → Набрать 1000 очков."] {
+		achievements["🔥 Клик-мастер → Набрать 1000 очков."] = true
+	}
+	if score >= 1000000 && !achievements["👑 Легенда → Набрать 1 000 000 очков."] {
+		achievements["👑 Легенда → Набрать 1 000 000 очков."] = true
 	}
 }

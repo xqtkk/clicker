@@ -5,46 +5,142 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Кликер</title>
     <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        #score, #autoClickers { font-size: 2rem; margin: 20px; }
+        body { text-align: center; font-family: Arial, sans-serif; background: #fff; color: #000; transition: background 0.3s, color 0.3s; }
+        .dark-mode { background: #121212; color: #fff; }
+        #score, #autoClickers { font-size: 2rem; margin: 20px; transition: 0.3s; user-select: none;}
         button { font-size: 1.5rem; padding: 10px 20px; cursor: pointer; }
+        #critical { color: red; font-weight: bold; display: none; }
+        #achievements { margin-top: 20px; }
+        #progress-bar { width: 300px; height: 20px; background: #ccc; border-radius: 10px; overflow: hidden; margin: 10px auto; }
+        #progress-fill { height: 100%; width: 0%; background: #4CAF50; transition: width 0.3s; }
+        .floating-number { position: absolute; font-size: 1.2rem; color: red; opacity: 1; transition: transform 1s, opacity 1s; user-select: none;}
     </style>
 </head>
 <body>
     <h1>Кликер</h1>
     <p>Счет: <span id="score">0</span></p>
-    <button onclick="clickButton()">Клик!</button>
-    <p>Автокликеров: <span id="autoClickers">0</span></p>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <button id="clickButton">Клик!</button>
+    <p id="critical" style="user-select: none;">КРИТИЧЕСКИЙ УДАР!</p>
+    <p style="user-select: none;">Автокликеров: <span id="autoClickers">0</span></p>
     <button id="buyAutoClicker" onclick="buyAutoClicker()">Купить автокликер (50 очков)</button>
-    
+    <button id="toggleTheme">Сменить тему</button>
+    <div id="floating-numbers-container"></div>
+    <div id="achievements">
+        <h2>Достижения</h2>
+        <ul id="achievementsList"></ul>
+    </div>
     <script>
+        let currentScore = 0;
+        let displayedScore = 0;
+        let animationFrame;
+
         async function updateScore() {
             const response = await fetch('/score');
             const data = await response.json();
+            animateScore(data.score);
             updateUI(data);
         }
 
-        function updateUI(data) {
+        function animateScore(newScore) {
+            currentScore = newScore;
+            if (!animationFrame) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        function animate() {
+            if (displayedScore < currentScore) {
+                displayedScore += Math.ceil((currentScore - displayedScore) / 10);
+                document.getElementById('score').innerText = displayedScore;
+                animationFrame = requestAnimationFrame(animate);
+            } else {
+                animationFrame = null;
+            }
+        }
+
+        async function updateUI(data) {
             document.getElementById('score').innerText = data.score;
             document.getElementById('autoClickers').innerText = data.autoClickers;
             document.getElementById('buyAutoClicker').innerText = `Купить автокликер (${data.price} очков)`;
             document.getElementById('buyAutoClicker').disabled = data.score < data.price;
+            updateAchievements(data.achievements); // Добавлено
+            let progress = (data.score / data.price) * 100;
+            document.getElementById('progress-fill').style.width = `${progress}%`;
         }
 
-        async function clickButton() {
-            await fetch('/click', { method: 'POST' });
-        }
+
+        // async function clickButton() {
+        //     const response = await fetch('/click', { method: 'POST' });
+        //     const data = await response.json();
+        //     if (data.critical) {
+        //         showCritical();
+        //     }
+        // }
 
         async function buyAutoClicker() {
             await fetch('/buy-autoclicker', { method: 'POST' });
         }
 
+        document.getElementById('clickButton').addEventListener('click', async function(event) {
+            let floatingScore = 1;
+
+            const response = await fetch('/click', { method: 'POST' });
+            const data = await response.json();
+
+            console.log("Критический:", data.critical);
+            
+            if (data.critical) {
+                floatingScore = 2;
+            }
+
+            createFloatingNumber(event.clientX, event.clientY, floatingScore);
+        });
+        
+        document.getElementById('toggleTheme').addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+        });
+
+        function createFloatingNumber(x, y, amount) {
+            const number = document.createElement('div');
+            number.className = 'floating-number';
+            number.innerText = `+${amount}`;
+            number.style.left = `${x}px`;
+            number.style.top = `${y}px`;
+            document.body.appendChild(number);
+            setTimeout(() => { number.style.opacity = '0'; number.style.transform = 'translateY(-50px)'; }, 50);
+            setTimeout(() => number.remove(), 1000);
+        }
+
+        async function showCritical() {
+            const crit = document.getElementById('critical');
+            crit.style.display = 'block';
+            setTimeout(() => { crit.style.display = 'none'; }, 500);
+        }
+    
+        async function updateAchievements(achievements) {
+            const list = document.getElementById('achievementsList');
+            list.innerHTML = '';
+            for (const [key, unlocked] of Object.entries(achievements)) {
+                if (unlocked) {
+                    const li = document.createElement('li');
+                    li.textContent = key;
+                    list.appendChild(li);
+                }
+            }
+        }
+
         // Подключаем SSE
         const eventSource = new EventSource('/events');
         eventSource.onmessage = function(event) {
+            // console.log("Получено событие:", event.data); // Проверим, что передается
             const data = JSON.parse(event.data);
             updateUI(data);
+            if (data.critical) {
+                showCritical();
+            }
         };
+
 
         updateScore(); // Первичное обновление UI
     </script>       

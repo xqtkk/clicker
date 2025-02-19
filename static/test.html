@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; background: #fff; color: #000; transition: background 0.3s, color 0.3s; }
+        .dark-mode { background: #121212; color: #fff; }
+        #score, #autoClickers { font-size: 2rem; margin: 20px; transition: 0.3s; }
+        button { font-size: 1.5rem; padding: 10px 20px; cursor: pointer; }
+        #progress-bar { width: 300px; height: 20px; background: #ccc; border-radius: 10px; overflow: hidden; margin: 10px auto; }
+        #progress-fill { height: 100%; width: 0%; background: #4CAF50; transition: width 0.3s; }
+        .floating-number { position: absolute; font-size: 1.2rem; color: red; opacity: 1; transition: transform 1s, opacity 1s; }
+    </style>
+</head>
+<body>
+    <h1>Кликер</h1>
+    <p>Счет: <span id="score">0</span></p>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <button id="clickButton">Клик!</button>
+    <p>Автокликеров: <span id="autoClickers">0</span></p>
+    <button id="buyAutoClicker">Купить автокликер (50 очков)</button>
+
+    
+    <script>
+
+
+        async function updateScore() {
+            const response = await fetch('/score');
+            const data = await response.json();
+            
+            updateUI(data);
+        }
+
+
+
+
+
+        function updateUI(data) {
+            document.getElementById('autoClickers').innerText = data.autoClickers;
+            document.getElementById('buyAutoClicker').innerText = `Купить автокликер (${data.price} очков)`;
+            document.getElementById('buyAutoClicker').disabled = data.score < data.price;
+
+        }
+
+        document.getElementById('clickButton').addEventListener('click', async function(event) {
+            const response = await fetch('/click', { method: 'POST' });
+            const data = await response.json();
+            createFloatingNumber(event.clientX, event.clientY, data.score - currentScore);
+        });
+
+        document.getElementById('buyAutoClicker').addEventListener('click', async function() {
+            await fetch('/buy-autoclicker', { method: 'POST' });
+        });
+
+        document.getElementById('toggleTheme').addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+        });
+
+        function createFloatingNumber(x, y, amount) {
+            const number = document.createElement('div');
+            number.className = 'floating-number';
+            number.innerText = `+${amount}`;
+            number.style.left = `${x}px`;
+            number.style.top = `${y}px`;
+            document.body.appendChild(number);
+            setTimeout(() => { number.style.opacity = '0'; number.style.transform = 'translateY(-50px)'; }, 50);
+            setTimeout(() => number.remove(), 1000);
+        }
+
+        const eventSource = new EventSource('/events');
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            animateScore(data.score);
+            updateUI(data);
+        };
+        
+        updateScore();
+    </script>
+</body>
+</html>
