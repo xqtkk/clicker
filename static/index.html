@@ -7,8 +7,9 @@
     <style>
         body { text-align: center; font-family: Arial, sans-serif; background: #fff; color: #000; transition: background 0.3s, color 0.3s; }
         .dark-mode { background: #121212; color: #fff; }
-        #score, #autoClickers { font-size: 2rem; margin: 20px; transition: 0.3s; user-select: none;}
+        #score, #autoClickers, #clickPower { font-size: 2rem; margin: 20px; transition: 0.3s; user-select: none;}
         button { font-size: 1.5rem; padding: 10px 20px; cursor: pointer; }
+        #clickButton { width: 100px; height: 100px; border-radius: 50%; font-size: 1.5rem; }
         #critical { color: red; font-weight: bold; display: none; }
         #achievements { margin-top: 20px; }
         #progress-bar { width: 300px; height: 20px; background: #ccc; border-radius: 10px; overflow: hidden; margin: 10px auto; }
@@ -23,7 +24,9 @@
     <button id="clickButton">Клик!</button>
     <p id="critical" style="user-select: none;">КРИТИЧЕСКИЙ УДАР!</p>
     <p style="user-select: none;">Автокликеров: <span id="autoClickers">0</span></p>
+    <p>Сила клика: <span id="clickPower">1</span></p>
     <button id="buyAutoClicker" onclick="buyAutoClicker()">Купить автокликер (50 очков)</button>
+    <button id="buyClickUpgrade" onclick="buyClickUpgrade()">Улучшить силу клика (150 очков)</button>
     <button id="toggleTheme">Сменить тему</button>
     <div id="floating-numbers-container"></div>
     <div id="achievements">
@@ -62,36 +65,34 @@
         async function updateUI(data) {
             document.getElementById('score').innerText = data.score;
             document.getElementById('autoClickers').innerText = data.autoClickers;
-            document.getElementById('buyAutoClicker').innerText = `Купить автокликер (${data.price} очков)`;
-            document.getElementById('buyAutoClicker').disabled = data.score < data.price;
+            document.getElementById('clickPower').innerText = data.clickPower;
+            document.getElementById('buyAutoClicker').innerText = `Купить автокликер (${data.autoClickerPrice} очков)`;
+            document.getElementById('buyAutoClicker').disabled = data.score < data.autoClickerPrice;
             updateAchievements(data.achievements); // Добавлено
-            let progress = (data.score / data.price) * 100;
+            let progress = (data.score / data.autoClickerPrice) * 100;
             document.getElementById('progress-fill').style.width = `${progress}%`;
+            document.getElementById('buyClickUpgrade').innerText = `Купить улучшение силы клика (${data.clickUpgradePrice} очков)`;
+            document.getElementById('buyClickUpgrade').disabled = data.score < data.clickUpgradePrice;
+            updateAchievements(data.achievements); // Добавлено
         }
-
-
-        // async function clickButton() {
-        //     const response = await fetch('/click', { method: 'POST' });
-        //     const data = await response.json();
-        //     if (data.critical) {
-        //         showCritical();
-        //     }
-        // }
 
         async function buyAutoClicker() {
             await fetch('/buy-autoclicker', { method: 'POST' });
         }
 
-        document.getElementById('clickButton').addEventListener('click', async function(event) {
-            let floatingScore = 1;
+        async function buyClickUpgrade() {
+            await fetch('/buy-click-upgrade', { method: 'POST' });
+        }
 
+        document.getElementById('clickButton').addEventListener('click', async function(event) {
             const response = await fetch('/click', { method: 'POST' });
             const data = await response.json();
 
-            console.log("Критический:", data.critical);
+            let floatingScore = data.clickPower;
+            // console.log("Критический:", data.critical);
             
             if (data.critical) {
-                floatingScore = 2;
+                floatingScore *= 2;
             }
 
             createFloatingNumber(event.clientX, event.clientY, floatingScore);

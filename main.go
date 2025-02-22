@@ -15,17 +15,19 @@ import (
 )
 
 var (
-	score        int
-	progress     int
-	autoClickers int32 // Количество купленных автокликеров
-	mutex        sync.Mutex
-	sseClients   = make(map[chan string]bool)
-	sseMutex     sync.Mutex
+	score             int
+	progress          int
+	autoClickers      int32 // Количество купленных автокликеров
+	clickPower        int   = 1
+	clickUpgradePrice int   = 200
+	mutex             sync.Mutex
+	sseClients        = make(map[chan string]bool)
+	sseMutex          sync.Mutex
 
 	achievements = map[string]bool{
-		"Первый клик!":     false,
-		"🏅 Новичок → Набрать 100 очков.":  false,
-		"🔥 Клик-мастер → Набрать 1000 очков.": false,
+		"Первый клик!":                         false,
+		"🏅 Новичок → Набрать 100 очков.":       false,
+		"🔥 Клик-мастер → Набрать 1000 очков.":  false,
 		"👑 Легенда → Набрать 1 000 000 очков.": false,
 	}
 )
@@ -38,11 +40,12 @@ func main() {
 		mutex.Lock()
 		defer mutex.Unlock()
 		c.JSON(http.StatusOK, gin.H{
-			"score":        score,
-			"progress":     progress,
-			"autoClickers": atomic.LoadInt32(&autoClickers),
-			"price":        getAutoClickerPrice(),
-			"achievements": achievements,
+			"score":             score,
+			"progress":          progress,
+			"autoClickers":      atomic.LoadInt32(&autoClickers),
+			"autoClickerPrice":  getAutoClickerPrice(),
+			"clickUpgradePrice": clickUpgradePrice,
+			"achievements":      achievements,
 		})
 	})
 
@@ -50,20 +53,18 @@ func main() {
 	r.POST("/click", func(c *gin.Context) {
 		mutex.Lock()
 		defer mutex.Unlock()
-
-		points := 1
+		criticalClickPower := clickPower
 		critical := false
 		if rand.Float32() < 0.1 {
-			points *= 2
+			criticalClickPower *= 2
 			critical = true
 		}
 
-		score += points
-		progress = score / 10
+		score += clickPower
 
 		checkAchievements()
 		broadcastScore(critical)
-		c.JSON(http.StatusOK, gin.H{"score": score, "progress": progress, "critical": critical})
+		c.JSON(http.StatusOK, gin.H{"score": score, "critical": critical, "clickPower": clickPower})
 	})
 
 	// Покупка автокликера
@@ -81,9 +82,25 @@ func main() {
 		broadcastScore(false)
 		c.JSON(http.StatusOK, gin.H{
 			"score":        score,
-			"progress":     progress,
 			"autoClickers": atomic.LoadInt32(&autoClickers),
 			"price":        getAutoClickerPrice(),
+		})
+	})
+
+	r.POST("/buy-click-upgrade", func(c *gin.Context) {
+		mutex.Lock()
+		if score >= clickUpgradePrice {
+			score -= clickUpgradePrice
+			clickPower *= 2
+			clickUpgradePrice *= 4
+		}
+
+		mutex.Unlock()
+		broadcastScore(false)
+		c.JSON(http.StatusOK, gin.H{
+			"score":        score,
+			"clickPower":   clickPower,
+			"clickUpgrade": clickUpgradePrice,
 		})
 	})
 
@@ -119,7 +136,7 @@ func main() {
 // Возвращает текущую цену автокликера
 func getAutoClickerPrice() int {
 	n := atomic.LoadInt32(&autoClickers)
-	return 50 * (1 << n) // 50, 100, 200, 400, 800...
+	return 25 * (1 << n) // 50, 100, 200, 400, 800...
 }
 
 // Запуск автокликера
@@ -141,12 +158,14 @@ func broadcastScore(critical bool) {
 
 	// Создаём структуру с данными
 	data := map[string]interface{}{
-		"score":        score,
-		"progress":     progress,
-		"autoClickers": atomic.LoadInt32(&autoClickers),
-		"price":        getAutoClickerPrice(),
-		"achievements": achievements,
-		"critical":     critical,
+		"score":             score,
+		"progress":          progress,
+		"autoClickers":      atomic.LoadInt32(&autoClickers),
+		"clickPower":        clickPower,
+		"autoClickerPrice":  getAutoClickerPrice(),
+		"clickUpgradePrice": clickUpgradePrice,
+		"achievements":      achievements,
+		"critical":          critical,
 	}
 
 	// Преобразуем в JSON
