@@ -1,0 +1,164 @@
+body {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    background: black;
+    color: white;
+    transition: background 0.3s, color 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+button {
+    font-size: 1.5rem;
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+}
+
+#score, #autoClickers, #clickPower {
+    font-size: 2rem;
+    margin: 20px;
+    transition: 0.3s;
+    user-select: none;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background: #ccc;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #4CAF50;
+    transition: width 0.3s;
+}
+
+#clickButton {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/9/97/The_Earth_seen_from_Apollo_17.jpg') no-repeat center/cover;
+    cursor: pointer;
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+#upgrade-menu {
+    width: 535px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.upgrade-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.upgrade-container span {
+    font-size: 1.2rem;
+    min-width: 40px;
+    text-align: right;
+}
+
+#achievementsButton {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    background: #222;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+#statsButton {
+    position: absolute;
+    top: 10px;
+    right: 150px;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    background: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+#achievements {
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    text-align: center;
+}
+
+#closeAchievements {
+    margin-top: 10px;
+    padding: 5px 10px;
+    cursor: pointer;
+    background: red;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+.star {
+    position: absolute;
+    background: white;
+    width: 2px;
+    height: 2px;
+    opacity: 0.8;
+    animation: twinkle 2s infinite;
+}
+
+@keyframes twinkle {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+.floating-number {
+    position: absolute;
+    font-size: 1.2rem; color: red;
+    opacity: 1;
+    transition: transform 1s, opacity 1s;
+    user-select: none;
+}
+
+#critical {
+    color: red;
+    font-weight: bold;
+    display: none;
+}
